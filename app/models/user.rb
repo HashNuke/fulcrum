@@ -32,6 +32,7 @@ class User < ActiveRecord::Base
     puts "EXTRA ATTRIBS: #{extra_attributes.inspect}"
     self.email = extra_attributes["email"]
     self.name = extra_attributes["first_name"] + " " + extra_attributes["last_name"]
+    self.initials = extra_attributes["first_name"][0] + extra_attributes["last_name"][0]
   end
 
 
