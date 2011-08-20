@@ -9,7 +9,7 @@ class User < ActiveRecord::Base
   if on_bushido?
     devise :bushido_authenticatable, :trackable
   else
-    devise :database_authenticatable, :registerable, #:confirmable,
+    devise :database_authenticatable, :registerable, :confirmable,
            :recoverable, :rememberable, :trackable, :validatable
      before_validation :set_random_password_if_blank
   end
