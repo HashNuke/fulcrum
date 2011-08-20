@@ -26,7 +26,11 @@
           <%- end -%>
         </ul>
       </li>
-      <li><%= link_to current_user.email, edit_user_registration_path %></li>
+      <%- unless on_bushido? %>
+        <li><%= link_to current_user.email, edit_user_registration_path %></li>
+      <%- else %>
+        <li><%= current_user.email %></li>
+      <%- end %>
       <li><%= link_to 'Log out', destroy_user_session_path %></li>
     <% else %>
       <li><%= link_to 'Log in', new_user_session_path %></li>
