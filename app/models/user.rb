@@ -5,8 +5,13 @@ class User < ActiveRecord::Base
 
   # Include default devise modules. Others available are:
   # :token_authenticatable, :confirmable, :lockable and :timeoutable
-  devise :database_authenticatable, :registerable, :confirmable,
-         :recoverable, :rememberable, :trackable, :validatable
+  
+  if on_bushido?
+    devise :database_authenticatable, :registerable, :confirmable,
+           :recoverable, :rememberable, :trackable, :validatable
+  else
+    devise :bushido_authenticatable, :trackable
+  end
 
   # Setup accessible (or protected) attributes for your model
   attr_accessible :email, :password, :password_confirmation, :remember_me,

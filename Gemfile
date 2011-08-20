@@ -7,6 +7,8 @@ gem 'rails', '3.0.9'
 
 gem 'sqlite3-ruby', :require => 'sqlite3'
 gem 'devise', '1.2.1'
+gem 'devise_bushido_authenticatable', :git=>"git://github.com/Bushido/devise_cas_authenticatable", :branch=>"ido_fork"
+
 gem 'cancan', '1.6.1'
 gem 'transitions', '0.0.9', :require => ["transitions", "active_record/transitions"]
 gem 'fastercsv', '1.5.3'
