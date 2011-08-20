@@ -7,10 +7,11 @@ class User < ActiveRecord::Base
   # :token_authenticatable, :confirmable, :lockable and :timeoutable
   
   if on_bushido?
-    devise :database_authenticatable, :registerable, :confirmable,
-           :recoverable, :rememberable, :trackable, :validatable
-  else
     devise :bushido_authenticatable, :trackable
+  else
+    devise :database_authenticatable, :registerable, #:confirmable,
+           :recoverable, :rememberable, :trackable, :validatable
+     before_validation :set_random_password_if_blank
   end
 
   # Setup accessible (or protected) attributes for your model
@@ -22,10 +23,17 @@ class User < ActiveRecord::Base
 
   has_and_belongs_to_many :projects, :uniq => true
 
-  before_validation :set_random_password_if_blank
-
+ 
   validates :name, :presence => true
   validates :initials, :presence => true
+
+  # called only if hosted on Bushido by the auth library
+  def bushido_extra_attributes(extra_attributes)
+    puts "EXTRA ATTRIBS: #{extra_attributes.inspect}"
+    self.email = extra_attributes["email"]
+    self.name = extra_attributes["first_name"] + " " + extra_attributes["last_name"]
+  end
+
 
   def to_s
     "#{name} (#{initials}) <#{email}>"
