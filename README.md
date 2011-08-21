@@ -1,8 +1,10 @@
-Fulcrum
-=======
+Fulcrum (Bushido fork)
+======================
 
 Fulcrum is an application to provide a user story based backlog management
 system for agile development teams.
+
+This fork of Fulcrum adds support to work on Bushido. It does work normally when hosted on platforms other than Bushido.
 
 Goals
 -----
