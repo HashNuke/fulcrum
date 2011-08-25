@@ -26,7 +26,7 @@
           <%- end -%>
         </ul>
       </li>
-      <%- unless on_bushido? %>
+      <%- unless Devise::on_bushido? %>
         <li><%= link_to current_user.email, edit_user_registration_path %></li>
       <%- else %>
         <li><%= current_user.email %></li>

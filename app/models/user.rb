@@ -6,7 +6,7 @@ class User < ActiveRecord::Base
   # Include default devise modules. Others available are:
   # :token_authenticatable, :confirmable, :lockable and :timeoutable
   
-  if on_bushido?
+  if Devise::on_bushido?
     devise :bushido_authenticatable, :trackable
   else
     devise :database_authenticatable, :registerable, :confirmable,
