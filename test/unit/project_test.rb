@@ -5,6 +5,12 @@ class ProjectTest < ActiveSupport::TestCase
     @project = Factory.create(:project)
   end
 
+  test "should not save a project without a name" do
+    @project.name = ""
+    assert !@project.save
+    assert_equal ["can't be blank"], @project.errors[:name]
+  end
+
   test "should return a string" do
     assert_equal @project.name, @project.to_s
   end
@@ -71,5 +77,21 @@ class ProjectTest < ActiveSupport::TestCase
     story = Factory.create(:story, :project => @project, :requested_by => @user)
     story.update_attribute :state, 'started'
     assert_equal Date.today, @project.start_date
+  end
+
+  test "should cascade delete stories" do
+    story = Factory.create(:story, :project => @project, :requested_by => @user)
+    assert_equal @project.stories.count, 1
+    assert_difference 'Story.count', -1 do
+      assert @project.destroy
+    end
+  end
+
+  test "should cascade delete changesets" do
+    story = Factory.create(:story, :project => @project, :requested_by => @user)
+    assert_equal @project.changesets.count, 1
+    assert_difference 'Changeset.count', -1 do
+      assert @project.destroy
+    end
   end
 end

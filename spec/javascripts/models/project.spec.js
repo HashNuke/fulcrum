@@ -24,16 +24,20 @@ describe('Project model', function() {
 
     it('should set up a story collection', function() {
       expect(this.project.stories).toBeDefined();
-      expect(this.project.stories.url).toEqual('/projects/999/stories')
+      expect(this.project.stories.url).toEqual('/projects/999/stories');
       // Sets up a reference on the collection to itself
       expect(this.project.stories.project).toBe(this.project);
     });
 
     it('should set up a user collection', function() {
       expect(this.project.users).toBeDefined();
-      expect(this.project.users.url).toEqual('/projects/999/users')
+      expect(this.project.users.url).toEqual('/projects/999/users');
       // Sets up a reference on the collection to itself
       expect(this.project.users.project).toBe(this.project);
+    });
+
+    it("should have a default velocity of 10", function() {
+      expect(this.project.get('default_velocity')).toEqual(10);
     });
 
   });
@@ -142,12 +146,12 @@ describe('Project model', function() {
 
     it("should get the right iteration number for a given date", function() {
       // This is a Monday
-      this.project.set({start_date: "2011-07-25"});
+      this.project.set({start_date: "2011/07/25"});
 
-      var compare_date = new Date("2011-07-25");
+      var compare_date = new Date("2011/07/25");
       expect(this.project.getIterationNumberForDate(compare_date)).toEqual(1);
 
-      compare_date = new Date("2011-08-01");
+      compare_date = new Date("2011/08/01");
       expect(this.project.getIterationNumberForDate(compare_date)).toEqual(2);
 
       // With a 2 week iteration length, the date above will still be in
@@ -160,6 +164,55 @@ describe('Project model', function() {
       expect(this.project.currentIterationNumber()).toEqual(1);
     });
 
+    it("should return the date for an iteration number", function() {
+
+      // This is a Monday
+      this.project.set({start_date: "2011/07/25"});
+
+      expect(this.project.getDateForIterationNumber(1)).toEqual(new Date("2011/07/25"));
+      expect(this.project.getDateForIterationNumber(5)).toEqual(new Date("2011/08/22"));
+
+      this.project.set({iteration_length: 4});
+      expect(this.project.getDateForIterationNumber(1)).toEqual(new Date("2011/07/25"));
+      expect(this.project.getDateForIterationNumber(5)).toEqual(new Date("2011/11/14"));
+
+      // Sunday
+      this.project.set({iteration_start_day: 0});
+      expect(this.project.getDateForIterationNumber(1)).toEqual(new Date("2011/07/24"));
+      expect(this.project.getDateForIterationNumber(5)).toEqual(new Date("2011/11/13"));
+
+      // Tuesday - This should evaluate to the Tuesday before the explicitly
+      // set start date (Monday)
+      this.project.set({iteration_start_day: 2});
+      expect(this.project.getDateForIterationNumber(1)).toEqual(new Date("2011/07/19"));
+      expect(this.project.getDateForIterationNumber(5)).toEqual(new Date("2011/11/08"));
+    });
+
+    it("should initialize with an array of iterations", function() {
+      expect(this.project.iterations).toEqual([]);
+    });
+
+    it("should get all the done iterations", function() {
+      var doneIteration = {
+        get: sinon.stub().withArgs('column').returns('#done')
+      };
+      var inProgressIteration = {
+        get: sinon.stub().withArgs('column').returns('#in_progress')
+      };
+      var backlogIteration = {
+        get: sinon.stub().withArgs('column').returns('#backlog')
+      };
+      var chillyBinIteration = {
+        get: sinon.stub().withArgs('column').returns('#chilly_bin')
+      };
+
+      this.project.iterations = [
+        doneIteration, inProgressIteration, backlogIteration, chillyBinIteration
+      ];
+
+      expect(this.project.doneIterations()).toEqual([doneIteration]);
+    });
+
   });
 
 
@@ -167,32 +220,89 @@ describe('Project model', function() {
 
     it("should return the start date", function() {
       // Date is a Monday, and day 1 is Monday
-      this.project.set({start_date: "2011-07-25",iteration_start_day: 1});
-      expect(this.project.startDate()).toEqual(new Date("2011-07-25"));
+      this.project.set({start_date: "2011/09/12",iteration_start_day: 1});
+      expect(this.project.startDate()).toEqual(new Date("2011/09/12"));
 
       // If the project start date has been explicitly set to a Thursday, but
       // the iteration_start_day is Monday, the start date should be the Monday
       // that immeadiatly preceeds the Thursday.
-      this.project.set({start_date: "2011-07-28"});
-      expect(this.project.startDate()).toEqual(new Date("2011-07-25"));
+      this.project.set({start_date: "2011/07/28"});
+      expect(this.project.startDate()).toEqual(new Date("2011/07/25"));
 
       // The same, but this time the iteration start day is 'after' the start
       // date day, in ordinal terms, e.g. iteration start date is a Saturday,
       // project start date is a Thursday.  The Saturday prior to the Thursday
       // should be returned.
       this.project.set({iteration_start_day: 6});
-      expect(this.project.startDate()).toEqual(new Date("2011-07-23"));
+      expect(this.project.startDate()).toEqual(new Date("2011/07/23"));
 
       // If the project start date is not set, it should be considered as the
       // first iteration start day prior to today.
       // FIXME - Stubbing Date is not working
-      var expected_date = new Date('2011-07-23');
-      var fake_today = new Date('2011-07-29');
+      var expected_date = new Date('2011/07/23');
+      var fake_today = new Date('2011/07/29');
+      // Stop JSHINT complaining about overriding Date
+      /*global Date: true*/
       orig_date = Date;
       Date = sinon.stub().returns(fake_today);
       this.project.unset('start_date');
       expect(this.project.startDate()).toEqual(expected_date);
       Date = orig_date;
     });
+  });
+
+  describe("velocity", function() {
+
+    it("returns the default velocity when done iterations are empty", function() {
+      this.project.set({'default_velocity': 999});
+      expect(this.project.velocity()).toEqual(999);
+    });
+
+    it("should return velocity", function() {
+      var doneIterations = _.map([1,2,3,4,5], function(i) {
+        return {points: sinon.stub().returns(i)};
+      });
+      var doneIterationsStub = sinon.stub(this.project, 'doneIterations');
+      doneIterationsStub.returns(doneIterations);
+
+      // By default, should take the average of the last 3 iterations,
+      // (3 + 4 + 5) = 12 / 3 = 4
+      expect(this.project.velocity()).toEqual(4);
+    });
+
+    it("should floor the velocity when it returns a fraction", function() {
+      var doneIterations = _.map([3,2,2], function(i) {
+        return {points: sinon.stub().returns(i)};
+      });
+      var doneIterationsStub = sinon.stub(this.project, 'doneIterations');
+      doneIterationsStub.returns(doneIterations);
+
+      // Should floor the result
+      // (3 + 2 + 2) = 7 / 3 = 2.333333
+      expect(this.project.velocity()).toEqual(2);
+    });
+
+    it("should return the velocity when few iterations are complete", function() {
+      // Still calculate the average correctly if fewer than the expected
+      // number of iterations have been completed.
+      var doneIterations = _.map([3,1], function(i) {
+        return {points: sinon.stub().returns(i)};
+      });
+      var doneIterationsStub = sinon.stub(this.project, 'doneIterations');
+      doneIterationsStub.returns(doneIterations);
+
+      expect(this.project.velocity()).toEqual(2);
+    });
+
+    it("should not return less than 1", function() {
+      var doneIterations = _.map([0,0,0], function(i) {
+        return {points: sinon.stub().returns(i)};
+      });
+      var doneIterationsStub = sinon.stub(this.project, 'doneIterations');
+      doneIterationsStub.returns(doneIterations);
+
+      expect(this.project.velocity()).toEqual(1);
+    });
+
   });
 });

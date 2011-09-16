@@ -11,7 +11,7 @@
 #   - dist/**/*.js
 #
 src_files:
-  - spec/javascripts/support/sinon-1.0.0.js
+  - spec/javascripts/support/sinon-1.1.1.js
   - spec/javascripts/support/jasmine-sinon.js
   - spec/javascripts/support/jasmine-jquery-1.2.0.js
   - public/javascripts/underscore.js
@@ -20,6 +20,7 @@ src_files:
   - public/javascripts/jquery-ui-1.8.11.custom.min.js
   - public/javascripts/jquery.tmpl.min.js
   - public/javascripts/backbone.rails.js
+  - public/javascripts/models/iteration.js
   - public/javascripts/models/project.js
   - public/javascripts/models/story.js
   - public/javascripts/models/user.js

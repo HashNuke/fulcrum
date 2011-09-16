@@ -54,8 +54,8 @@ var StoryView = FormView.extend({
     // by just searching up above and below in the DOM of the column position
     // the story was dropped on.  The case where the column is empty is
     // handled below.
-    var previous_story_id = target.prev().attr('id');
-    var next_story_id = target.next().attr('id');
+    var previous_story_id = target.prev('.story').attr('id');
+    var next_story_id = target.next('.story').attr('id');
 
     // Set the story state if drop column is chilly_bin or backlog
     var column = target.parent().attr('id');
@@ -219,7 +219,7 @@ var StoryView = FormView.extend({
       div = this.make('div');
       if (!this.model.isNew()) {
         $(div).append(
-          this.make("img", {class: "collapse", src: "/images/collapse.png"})
+          this.make("img", {'class': "collapse", 'src': "/images/collapse.png"})
         );
       }
       $(div).append(this.textField("title"));
@@ -227,7 +227,9 @@ var StoryView = FormView.extend({
 
       div = this.make('div');
       $(div).append(this.submit());
-      if (!this.model.isNew()) $(div).append(this.destroy());
+      if (!this.model.isNew()) {
+        $(div).append(this.destroy());
+      }
       $(div).append(this.cancel());
       $(this.el).append(div);
 

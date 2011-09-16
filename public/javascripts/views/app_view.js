@@ -4,7 +4,7 @@ var AppView = Backbone.View.extend({
     _.bindAll(this, 'addOne', 'addAll', 'render');
 
     window.Project.stories.bind('add', this.addOne);
-    window.Project.stories.bind('refresh', this.addAll);
+    window.Project.stories.bind('reset', this.addAll);
     window.Project.stories.bind('all', this.render);
 
     window.Project.stories.fetch();
@@ -21,7 +21,9 @@ var AppView = Backbone.View.extend({
     $('#backlog').html("");
     $('#chilly_bin').html("");
 
-    // FIXME - Refactor
+    //
+    // Done column
+    //
     var that = this;
     var done_iterations = _.groupBy(window.Project.stories.column('#done'),
                                     function(story) {
@@ -32,47 +34,103 @@ var AppView = Backbone.View.extend({
     // may have been accepted in a given iteration, and it will therefore
     // not appear in the set.  Store this to iterate over those gaps and
     // insert empty iterations.
-    var last_iteration = 0;
+    var last_iteration = new Iteration({'number': 0});
 
-    _.each(done_iterations, function(stories, iteration) {
+    _.each(done_iterations, function(stories, iterationNumber) {
 
-      that.fillInEmptyIterations($('#done'), last_iteration, iteration);
+      var iteration = new Iteration({
+        'number': iterationNumber, 'stories': stories, column: '#done'
+      });
+
+      window.Project.iterations.push(iteration);
+
+      that.fillInEmptyIterations('#done', last_iteration, iteration);
       last_iteration = iteration;
 
-      var points = _.reduce(stories, function(memo, story) {
-        var estimate = 0;
-        if (story.get('story_type') === 'feature') {
-          estimate = story.get('estimate') || 0;
-        } 
-        return memo + estimate;
-      }, 0);
-      // FIXME - Make a view
-      $('#done').append('<div class="iteration">' + iteration + '<span class="points">' + points + ' points</span></div>');
+      $('#done').append(that.iterationDiv(iteration));
       _.each(stories, function(story) {that.addOne(story)});
     });
 
-    this.fillInEmptyIterations($('#done'), last_iteration, window.Project.currentIterationNumber());
+    // Fill in any remaining empty iterations in the done column
+    var currentIteration = new Iteration({
+      'number': window.Project.currentIterationNumber(),
+      'stories': window.Project.stories.column('#in_progress')
+    });
+    this.fillInEmptyIterations('#done', last_iteration, currentIteration);
 
-    var points = _.reduce(window.Project.stories.column('#in_progress'), function(memo, story) {
-      var estimate = 0;
-      if (story.get('story_type') === 'feature' && story.get('state') === 'accepted') {
-        estimate = story.get('estimate') || 0;
-      } 
-      return memo + estimate;
-    }, 0);
-    $('#in_progress').append('<div class="iteration">' + window.Project.getIterationNumberForDate(new Date()) + '<span class="points">' + 0 + ' points</span></div>');
+    //
+    // In progress column
+    //
+    // FIXME - Show completed/total points
+    $('#in_progress').append(that.iterationDiv(currentIteration));
     _.each(window.Project.stories.column('#in_progress'), this.addOne);
-    _.each(window.Project.stories.column('#backlog'), this.addOne);
+
+
+
+    //
+    // Backlog column
+    //
+    var backlogIteration = new Iteration({
+      'number': currentIteration.get('number') + 1,
+      'rendered': false,
+      'maximum_points': window.Project.velocity()
+    });
+    _.each(window.Project.stories.column('#backlog'), function(story) {
+
+      if (!backlogIteration.canTakeStory(story)) {
+        // The iteration is full, render it
+        $('#backlog').append(that.iterationDiv(backlogIteration));
+        _.each(backlogIteration.get('stories'), function(iterationStory) {
+          that.addOne(iterationStory);
+        });
+        backlogIteration.set({'rendered': true});
+
+        var nextNumber = backlogIteration.get('number') + 1 + Math.ceil(backlogIteration.overflowsBy() / window.Project.velocity());
+
+        var nextIteration = new Iteration({
+          'number': nextNumber,
+          'rendered': false,
+          'maximum_points': window.Project.velocity()
+        });
+
+        // If the iteration overflowed, create enough empty iterations to
+        // accommodate the surplus.  For example, if the project velocity
+        // is 1, and the last iteration contained 1 5 point story, we'll
+        // need 4 empty iterations.
+        //
+        that.fillInEmptyIterations('#backlog', backlogIteration, nextIteration);
+        backlogIteration = nextIteration;
+      }
+
+      backlogIteration.get('stories').push(story);
+      //that.addOne(story);
+    });
+
+    // Render the backlog final backlog iteration if it isn't already
+    $('#backlog').append(that.iterationDiv(backlogIteration));
+    _.each(backlogIteration.get('stories'), function(story) {
+      that.addOne(story);
+    });
+    backlogIteration.set({'rendered': true});
+
     _.each(window.Project.stories.column('#chilly_bin'), this.addOne);
   },
 
-  // Creates a set of empty iterations in column el, with iteration numbers
+  // Creates a set of empty iterations in column, with iteration numbers
   // starting at start and ending at end
-  fillInEmptyIterations: function(el, start, end) {
-    var missing_range = _.range(parseInt(start) + 1, parseInt(end));
-    console.debug(missing_range);
+  fillInEmptyIterations: function(column, start, end) {
+    var el = $(column);
+    var missing_range = _.range(
+      parseInt(start.get('number')) + 1,
+      parseInt(end.get('number'))
+    );
+    var that = this;
     _.each(missing_range, function(missing_iteration_number) {
-      el.append('<div class="iteration">' + missing_iteration_number + '<span class="points">0 points</span></div>');
+      var iteration = new Iteration({
+        'number': missing_iteration_number, 'column': column
+      });
+      window.Project.iterations.push(iteration);
+      el.append(that.iterationDiv(iteration));
     });
   },
 
@@ -82,6 +140,14 @@ var AppView = Backbone.View.extend({
     var extra = 100;
     var height = $(window).height() - (storyTableTop + extra);
     $('.storycolumn').css('height', height + 'px');
+  },
+
+  // FIXME - Make a view
+  iterationDiv: function(iteration) {
+    // FIXME Make a model method
+    var iteration_date = window.Project.getDateForIterationNumber(iteration.get('number'));
+    var points_markup = '<span class="points">' + iteration.points() + ' points</span>';
+    return '<div class="iteration">' + iteration.get('number') + ' - ' + iteration_date.toDateString() + points_markup + '</div>'
   },
 
   notice: function(message) {

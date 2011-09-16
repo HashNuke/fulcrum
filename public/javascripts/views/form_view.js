@@ -3,7 +3,7 @@ var FormView = Backbone.View.extend({
 
   label: function(elem_id, value) {
     value = value || elem_id;
-    return this.make('label', {for: elem_id}, value);
+    return this.make('label', {'for': elem_id}, value);
   },
 
   textField: function(name) {
@@ -82,8 +82,10 @@ var FormView = Backbone.View.extend({
   bindElementToAttribute: function(el, name) {
     var that = this;
     $(el).bind("change", function() {
-      that.changed_attributes || (that.changed_attributes = {});
+      if (typeof(that.changed_attributes) == 'undefined') {
+        that.changed_attributes = {};
+      }
       that.changed_attributes[name] = $(el).val();
     });
-  },
+  }
 });
